@@ -52,27 +52,30 @@ def seed():
             print(f"  Created category: {c['name']} -> manager: {manager.name}")
 
         # Sample claims
+        # NOTE: requester must never be the manager of the claim's category
+        # Category managers: Office=Alice, Travel=Bob, Client Entertainment=Carol,
+        #                    Software/Subscriptions=Alice, Other=Dan
         sample_claims = [
-            {
-                "requester_email": "bob@company.com",
+            {   # pending — Bob's Travel claim, but Carol is the requester (not Bob)
+                "requester_email": "carol@company.com",
                 "category": "Travel",
                 "amount": "245.50",
                 "description": "Flight to NYC for client meeting Q3",
                 "expense_date": date(2026, 8, 15),
-                "payment_details": "Bank transfer to Bob Smith, IBAN: GB29NWBK60161331926819",
+                "payment_details": "Bank transfer to Carol Davis, IBAN: GB29NWBK60161331926819",
                 "status": ClaimStatus.pending,
             },
-            {
-                "requester_email": "carol@company.com",
+            {   # pending — Client Entertainment claim by Eve (manager is Carol)
+                "requester_email": "eve@company.com",
                 "category": "Client Entertainment",
                 "amount": "320.00",
                 "description": "Team dinner with Acme Corp executives after partnership signing",
                 "expense_date": date(2026, 8, 20),
-                "payment_details": "Reimburse to carol@company.com via PayPal",
+                "payment_details": "Reimburse to eve@company.com via PayPal",
                 "status": ClaimStatus.pending,
             },
-            {
-                "requester_email": "eve@company.com",
+            {   # approved — Software/Subscriptions by Bob (manager is Alice)
+                "requester_email": "bob@company.com",
                 "category": "Software/Subscriptions",
                 "amount": "49.99",
                 "description": "Notion Pro annual subscription for project management",
@@ -80,23 +83,23 @@ def seed():
                 "payment_details": "Corporate card ending 4242",
                 "status": ClaimStatus.approved,
             },
-            {
-                "requester_email": "dan@company.com",
+            {   # rejected — Office claim by Eve (manager is Alice)
+                "requester_email": "eve@company.com",
                 "category": "Office",
                 "amount": "89.00",
                 "description": "Ergonomic mouse and keyboard for home office",
                 "expense_date": date(2026, 7, 28),
-                "payment_details": "Reimburse via bank: Dan Lee, Sort: 20-00-00, Acc: 12345678",
+                "payment_details": "Reimburse via bank: Eve Martinez, Sort: 20-00-00, Acc: 87654321",
                 "status": ClaimStatus.rejected,
                 "reject_comment": "Home office equipment requires separate approval form. Please resubmit with form HR-07.",
             },
-            {
-                "requester_email": "bob@company.com",
+            {   # pending — Travel claim by Dan (manager is Bob)
+                "requester_email": "dan@company.com",
                 "category": "Travel",
                 "amount": "1200.00",
-                "description": "Hotel accommodation for conference",
+                "description": "Hotel accommodation for annual conference",
                 "expense_date": date(2026, 8, 10),
-                "payment_details": "Bank transfer to Bob Smith",
+                "payment_details": "Bank transfer to Dan Lee, Sort: 20-00-00, Acc: 11223344",
                 "status": ClaimStatus.pending,
             },
         ]

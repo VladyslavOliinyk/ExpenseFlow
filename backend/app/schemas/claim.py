@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.claim import ClaimStatus
 from app.schemas.category import CategoryOut
@@ -10,16 +10,16 @@ from app.schemas.user import UserOut
 
 class ClaimCreate(BaseModel):
     category_id: int
-    amount: Decimal
+    amount: Decimal = Field(gt=0)
     description: str
     expense_date: date
-    payment_details: str
+    payment_details: str = Field(max_length=200)
 
-    @field_validator("amount")
+    @field_validator("expense_date")
     @classmethod
-    def amount_positive(cls, v: Decimal) -> Decimal:
-        if v <= 0:
-            raise ValueError("Amount must be positive")
+    def not_in_future(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("Expense date cannot be in the future")
         return v
 
     @field_validator("description", "payment_details")

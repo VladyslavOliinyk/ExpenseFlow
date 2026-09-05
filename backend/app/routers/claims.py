@@ -101,8 +101,10 @@ def create_claim(
 
 def _run_ai_analysis(claim_id: int):
     """Background task: run AI analysis and save results to the claim."""
+    import logging
     from app.ai.router import analyze_claim_with_fallback
 
+    logger = logging.getLogger(__name__)
     db = SessionLocal_bg()
     try:
         claim = (
@@ -146,6 +148,13 @@ def _run_ai_analysis(claim_id: int):
             claim.ai_mismatch_reason = result.mismatch_reason
             claim.ai_provider_used = result.provider_used
             db.commit()
+    except Exception:
+        logger.exception("AI background analysis failed for claim_id=%s", claim_id)
+        # ai_summary stays None — frontend shows "AI insight unavailable"
+        try:
+            db.rollback()
+        except Exception:
+            pass
     finally:
         db.close()
 
