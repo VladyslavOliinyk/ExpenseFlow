@@ -97,6 +97,7 @@ export function NewClaimPage() {
               <Input
                 id="expense_date"
                 type="date"
+                max={new Date().toISOString().split('T')[0]}
                 value={form.expense_date}
                 onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
               />
@@ -119,6 +120,7 @@ export function NewClaimPage() {
                 id="payment_details"
                 placeholder="Bank account, PayPal, or other reimbursement details"
                 rows={2}
+                maxLength={200}
                 value={form.payment_details}
                 onChange={(e) => setForm((f) => ({ ...f, payment_details: e.target.value }))}
               />

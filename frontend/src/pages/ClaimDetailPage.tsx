@@ -107,7 +107,7 @@ export function ClaimDetailPage() {
 
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Payment details</p>
-            <p className="text-sm text-gray-700 font-mono">{claim.payment_details}</p>
+            <p className="text-sm text-gray-700 font-mono break-all">{claim.payment_details}</p>
           </div>
 
           {claim.reject_comment && (
