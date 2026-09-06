@@ -11,7 +11,9 @@ class Settings(BaseSettings):
 
     ai_mode: str = "mock"  # mock | auto
     anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
     google_ai_api_key: str = ""
+    google_ai_model: str = "gemini-2.0-flash"
     ai_timeout_seconds: int = 5
 
     environment: str = "development"

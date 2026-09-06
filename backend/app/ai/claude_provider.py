@@ -1,4 +1,5 @@
 import json
+import re
 
 import anthropic
 
@@ -18,13 +19,21 @@ Amount: ${amount:.2f}
 Description: {description}"""
 
 
+def _extract_json(text: str) -> str:
+    """Extract JSON from text, stripping markdown fences and surrounding prose."""
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if match:
+        return match.group(1).strip()
+    return text.strip()
+
+
 class ClaudeProvider(AIProvider):
     def __init__(self):
         self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     def analyze_claim(self, amount: float, category: str, description: str) -> ClaimAnalysisResult:
         message = self._client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=settings.anthropic_model,
             max_tokens=300,
             temperature=0,
             system=_SYSTEM_PROMPT,
@@ -37,8 +46,15 @@ class ClaudeProvider(AIProvider):
                 }
             ],
         )
-        raw = message.content[0].text.strip()
-        data = json.loads(raw)
+        raw = _extract_json(message.content[0].text)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Claude returned non-JSON response: {raw[:200]}") from exc
+
+        if "summary" not in data or "mismatch_flag" not in data:
+            raise ValueError(f"Claude response missing required fields: {list(data.keys())}")
+
         return ClaimAnalysisResult(
             summary=data["summary"],
             mismatch_flag=bool(data["mismatch_flag"]),
