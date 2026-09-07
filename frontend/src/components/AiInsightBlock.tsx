@@ -1,16 +1,18 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Bot } from 'lucide-react'
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Bot, RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Claim } from '@/types'
 
 interface Props {
   claim: Claim
+  reanalyzeFailedNote?: boolean
 }
 
-export function AiInsightBlock({ claim }: Props) {
+export function AiInsightBlock({ claim, reanalyzeFailedNote }: Props) {
   const [expanded, setExpanded] = useState(false)
 
-  if (claim.ai_status === 'pending' || claim.ai_status === 'processing') {
+  // First analysis in progress — no previous result to show
+  if ((claim.ai_status === 'pending' || claim.ai_status === 'processing') && claim.ai_summary === null) {
     return (
       <div className="rounded-lg border border-gray-200 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -34,6 +36,9 @@ export function AiInsightBlock({ claim }: Props) {
     )
   }
 
+  // Show result (completed, or re-analysis in progress over an existing result)
+  const isReanalyzing = claim.ai_status === 'processing'
+
   return (
     <div
       className={`rounded-lg border p-4 space-y-2 animate-in fade-in duration-300 ${
@@ -54,7 +59,12 @@ export function AiInsightBlock({ claim }: Props) {
             )}
           </span>
         </div>
-        {claim.ai_mismatch_flag ? (
+        {isReanalyzing ? (
+          <div className="flex items-center gap-1 text-gray-400 text-xs">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            Re-analyzing…
+          </div>
+        ) : claim.ai_mismatch_flag ? (
           <div className="flex items-center gap-1 text-amber-600 text-xs font-medium">
             <AlertTriangle className="h-3.5 w-3.5" />
             Mismatch flagged
@@ -84,6 +94,12 @@ export function AiInsightBlock({ claim }: Props) {
             </p>
           )}
         </div>
+      )}
+
+      {reanalyzeFailedNote && (
+        <p className="text-xs text-gray-400 pt-1 border-t border-gray-200">
+          Re-analysis attempt failed — showing previous result.
+        </p>
       )}
     </div>
   )

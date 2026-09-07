@@ -106,8 +106,12 @@ def create_claim(
     return _claim_to_out(claim)
 
 
-def _run_ai_analysis(claim_id: int, skip_cache: bool = False):
-    """Background task: run AI analysis and save results to the claim."""
+def _run_ai_analysis(claim_id: int, skip_cache: bool = False, had_previous_result: bool = False):
+    """Background task: run AI analysis and save results to the claim.
+
+    had_previous_result: if True and analysis fails, restore ai_status to "completed"
+    so the previous valid result stays visible rather than flipping to "failed".
+    """
     import logging
     from app.ai.router import analyze_claim_with_fallback
 
@@ -162,14 +166,18 @@ def _run_ai_analysis(claim_id: int, skip_cache: bool = False):
             claim.ai_provider_used = result.provider_used
             claim.ai_status = AiStatus.completed
         else:
-            claim.ai_status = AiStatus.failed
+            # If a previous valid result existed, restore "completed" to keep it visible.
+            claim.ai_status = AiStatus.completed if had_previous_result else AiStatus.failed
         db.commit()
     except Exception:
         logger.exception("AI background analysis failed for claim_id=%s", claim_id)
         try:
             db.rollback()
-            claim.ai_status = AiStatus.failed
-            db.commit()
+            # Re-query after rollback so the ORM object is in a clean state.
+            fresh = db.query(Claim).filter(Claim.id == claim_id).first()
+            if fresh:
+                fresh.ai_status = AiStatus.completed if had_previous_result else AiStatus.failed
+                db.commit()
         except Exception:
             pass
     finally:
@@ -202,14 +210,13 @@ def reanalyze_claim(
         raise HTTPException(status_code=429, detail="Please wait before re-running analysis")
     _reanalyze_last_call[claim_id] = time.time()
 
-    claim.ai_summary = None
-    claim.ai_mismatch_flag = None
-    claim.ai_mismatch_reason = None
-    claim.ai_provider_used = None
+    # Preserve existing AI fields — they stay visible during re-analysis.
+    # Only the status changes so the frontend shows the "Re-analyzing…" overlay.
+    had_previous_result = claim.ai_summary is not None
     claim.ai_status = AiStatus.processing
     db.commit()
 
-    background_tasks.add_task(_run_ai_analysis, claim.id, True)
+    background_tasks.add_task(_run_ai_analysis, claim.id, True, had_previous_result)
 
     claim = (
         db.query(Claim)

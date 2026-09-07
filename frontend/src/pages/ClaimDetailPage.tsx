@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { useClaimDetail, useReanalyzeClaim } from '@/hooks/useClaimDetail'
@@ -19,9 +19,24 @@ export function ClaimDetailPage() {
   const claimId = Number(id)
   const user = useAuthStore((s) => s.user)
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [reanalyzeFailedNote, setReanalyzeFailedNote] = useState(false)
+  const prevSummaryRef = useRef<string | null | undefined>(undefined)
 
   const { data: claim, isLoading } = useClaimDetail(claimId)
   const reanalyze = useReanalyzeClaim(claimId)
+
+  // Detect when a reanalyze attempt completes and the result didn't change
+  // (meaning all providers failed but the old result was preserved).
+  useEffect(() => {
+    if (prevSummaryRef.current === undefined) return
+    if (claim?.ai_status === 'pending' || claim?.ai_status === 'processing') return
+    if (claim?.ai_status === 'completed' && claim.ai_summary === prevSummaryRef.current) {
+      setReanalyzeFailedNote(true)
+    } else {
+      setReanalyzeFailedNote(false)
+    }
+    prevSummaryRef.current = undefined
+  }, [claim?.ai_status, claim?.ai_summary])
   const approve = useApproveClaim()
   const reject = useRejectClaim()
   const withdraw = useWithdrawClaim()
@@ -117,14 +132,18 @@ export function ClaimDetailPage() {
 
           <Separator />
 
-          <AiInsightBlock claim={claim} />
+          <AiInsightBlock claim={claim} reanalyzeFailedNote={reanalyzeFailedNote} />
 
           {claim.status === 'pending' && (
             <div className="flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => reanalyze.mutate(undefined)}
+                onClick={() => {
+                  prevSummaryRef.current = claim.ai_summary
+                  setReanalyzeFailedNote(false)
+                  reanalyze.mutate(undefined)
+                }}
                 disabled={reanalyze.isPending}
               >
                 <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${reanalyze.isPending ? 'animate-spin' : ''}`} />
