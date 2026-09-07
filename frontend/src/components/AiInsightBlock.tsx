@@ -15,8 +15,8 @@ export function AiInsightBlock({ claim, isLoading }: Props) {
     return (
       <div className="rounded-lg border border-gray-200 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Bot className="h-4 w-4" />
-          <span>AI Insight</span>
+          <Bot className="h-4 w-4 animate-pulse" />
+          <span>Analyzing claim…</span>
         </div>
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
@@ -38,7 +38,7 @@ export function AiInsightBlock({ claim, isLoading }: Props) {
 
   return (
     <div
-      className={`rounded-lg border p-4 space-y-2 ${
+      className={`rounded-lg border p-4 space-y-2 animate-in fade-in duration-300 ${
         claim.ai_mismatch_flag
           ? 'border-amber-200 bg-amber-50'
           : 'border-green-200 bg-green-50'

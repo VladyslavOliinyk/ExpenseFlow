@@ -6,12 +6,10 @@ export function useClaimDetail(id: number) {
     queryKey: ['claims', id],
     queryFn: () => fetchClaim(id),
     refetchInterval: (query) => {
-      // Keep polling until AI results appear (max 30s intervals)
       const data = query.state.data
-      if (data && data.ai_summary === null && data.status === 'pending') {
-        return 5_000
-      }
-      return 30_000
+      if (!data || data.ai_summary !== null) return false
+      const ageMs = Date.now() - new Date(data.created_at).getTime()
+      return ageMs < 20_000 ? 5_000 : false
     },
     refetchOnWindowFocus: true,
   })
