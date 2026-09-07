@@ -50,3 +50,25 @@ def build_gemini_prompt(category: str, amount: float, description: str) -> str:
     """Returns a single combined prompt string for Gemini."""
     user_message = CLAIM_DATA_TEMPLATE.format(category=category, amount=amount, description=description)
     return f"{CLAIM_ANALYSIS_RULES}\n\n{user_message}"
+
+
+_CATEGORY_DESCRIPTIONS = (
+    "Office (office supplies, furniture, equipment for the workplace), "
+    "Travel (flights, trains, hotels, taxis, per diem for business trips), "
+    "Client Entertainment (meals, events, gifts related to client relationships), "
+    "Software/Subscriptions (SaaS tools, licenses, subscriptions), "
+    "Other (anything that does not fit the above)"
+)
+
+
+def build_category_suggestion_prompt(description: str, categories: list[str]) -> str:
+    """Returns a prompt for category suggestion (used by both Claude and Gemini)."""
+    cats = ", ".join(f'"{c}"' for c in categories)
+    return (
+        f"Given this expense description, suggest which category it most likely belongs to.\n\n"
+        f"Categories: {_CATEGORY_DESCRIPTIONS}\n\n"
+        f"Description: {description}\n\n"
+        f"Respond ONLY with JSON using exactly one of these category names: {cats}\n"
+        f'{{"suggested_category": "<exact category name>", "confidence": "high" | "medium" | "low"}}\n'
+        f'If the description is too short or vague, use "Other" with confidence "low".'
+    )

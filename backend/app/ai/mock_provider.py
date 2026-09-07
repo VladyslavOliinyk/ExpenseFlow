@@ -1,7 +1,7 @@
 import json
 import os
 
-from app.ai.base import AIProvider, ClaimAnalysisResult
+from app.ai.base import AIProvider, CategorySuggestion, ClaimAnalysisResult
 
 _FIXTURES_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "sample_responses.json")
 
@@ -34,3 +34,15 @@ class MockProvider(AIProvider):
             mismatch_reason=resp.get("mismatch_reason"),
             provider_used="mock",
         )
+
+    def suggest_category(self, description: str, categories: list[str]) -> CategorySuggestion:
+        desc = description.lower()
+        if any(w in desc for w in ["flight", "hotel", "taxi", "train", "trip", "travel", "conference"]):
+            return CategorySuggestion(suggested_category="Travel", confidence="high")
+        if any(w in desc for w in ["software", "subscription", "license", "saas", "app", "tool"]):
+            return CategorySuggestion(suggested_category="Software/Subscriptions", confidence="high")
+        if any(w in desc for w in ["office", "supplies", "paper", "printer", "furniture", "desk"]):
+            return CategorySuggestion(suggested_category="Office", confidence="high")
+        if any(w in desc for w in ["client", "meal", "dinner", "lunch", "entertainment", "gift"]):
+            return CategorySuggestion(suggested_category="Client Entertainment", confidence="high")
+        return CategorySuggestion(suggested_category="Other", confidence="low")

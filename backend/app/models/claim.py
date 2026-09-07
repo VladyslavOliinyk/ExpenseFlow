@@ -59,6 +59,12 @@ class Claim(Base):
     ai_mismatch_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_provider_used: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    # Duplicate detection (SQL-based, not AI)
+    is_potential_duplicate: Mapped[bool] = mapped_column(Boolean, default=False)
+    duplicate_of_claim_id: Mapped[int | None] = mapped_column(
+        ForeignKey("claims.id", ondelete="SET NULL"), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

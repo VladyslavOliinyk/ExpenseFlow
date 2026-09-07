@@ -1,8 +1,10 @@
+import difflib
 import hashlib
 import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from app.ai.prompts import PROMPT_VERSION
@@ -16,6 +18,51 @@ router = APIRouter()
 # Simple in-memory rate limit: one real AI call per claim per N seconds.
 _reanalyze_last_call: dict[int, float] = {}
 _REANALYZE_COOLDOWN_S = 10
+
+# In-memory cache for category suggestions (description_hash → (category, confidence))
+_suggest_cache: dict[str, tuple[str | None, str | None]] = {}
+_SUGGEST_CACHE_MAX = 500
+_SUGGEST_CATEGORIES = ["Office", "Travel", "Client Entertainment", "Software/Subscriptions", "Other"]
+
+
+class SuggestCategoryBody(BaseModel):
+    description: str
+
+
+class SuggestCategoryOut(BaseModel):
+    suggested_category: str | None = None
+    confidence: str | None = None
+
+
+def _is_dup_candidate(
+    amount_a: float, date_a, desc_a: str,
+    amount_b: float, date_b, desc_b: str,
+) -> bool:
+    """Pure function: True if two claims look like duplicates by amount, date, and description."""
+    amount_diff = abs(amount_a - amount_b) / max(amount_a, 0.01)
+    date_diff = abs((date_a - date_b).days)
+    desc_ratio = difflib.SequenceMatcher(None, desc_a.lower(), desc_b.lower()).ratio()
+    return amount_diff < 0.05 and date_diff <= 3 and desc_ratio > 0.6
+
+
+def _check_duplicate(db: Session, claim: Claim) -> tuple[bool, int | None]:
+    """Query existing pending/approved claims by the same requester for a potential duplicate."""
+    candidates = (
+        db.query(Claim)
+        .filter(
+            Claim.requester_id == claim.requester_id,
+            Claim.id != claim.id,
+            Claim.status.in_([ClaimStatus.pending, ClaimStatus.approved]),
+        )
+        .all()
+    )
+    for c in candidates:
+        if _is_dup_candidate(
+            float(claim.amount), claim.expense_date, claim.description,
+            float(c.amount), c.expense_date, c.description,
+        ):
+            return True, c.id
+    return False, None
 
 
 def _compute_hash(amount, category_id: int, description: str) -> str:
@@ -56,6 +103,8 @@ def _claim_to_out(claim: Claim) -> ClaimOut:
         ai_mismatch_flag=claim.ai_mismatch_flag,
         ai_mismatch_reason=claim.ai_mismatch_reason,
         ai_provider_used=claim.ai_provider_used,
+        is_potential_duplicate=claim.is_potential_duplicate,
+        duplicate_of_claim_id=claim.duplicate_of_claim_id,
         created_at=claim.created_at,
         updated_at=claim.updated_at,
         resolved_at=claim.resolved_at,
@@ -90,6 +139,13 @@ def create_claim(
     db.commit()
     db.refresh(claim)
 
+    # Check for potential duplicate before the eager-load re-query
+    is_dup, dup_of = _check_duplicate(db, claim)
+    if is_dup:
+        claim.is_potential_duplicate = True
+        claim.duplicate_of_claim_id = dup_of
+        db.commit()
+
     # Eager-load relationships for response
     claim = (
         db.query(Claim)
@@ -104,6 +160,33 @@ def create_claim(
     background_tasks.add_task(_run_ai_analysis, claim.id)
 
     return _claim_to_out(claim)
+
+
+@router.post("/claims/suggest-category")
+def suggest_category(
+    body: SuggestCategoryBody,
+    current_user: User = Depends(get_current_user),
+) -> SuggestCategoryOut:
+    desc = body.description.strip()
+    if len(desc) < 10:
+        return SuggestCategoryOut()
+
+    cache_key = hashlib.sha256(desc.lower().encode()).hexdigest()
+    if cache_key in _suggest_cache:
+        cat, conf = _suggest_cache[cache_key]
+        return SuggestCategoryOut(suggested_category=cat, confidence=conf)
+
+    from app.ai.router import suggest_category_with_fallback
+    result = suggest_category_with_fallback(desc, _SUGGEST_CATEGORIES)
+
+    cat = result.suggested_category if result else None
+    conf = result.confidence if result else None
+
+    if len(_suggest_cache) >= _SUGGEST_CACHE_MAX:
+        _suggest_cache.clear()
+    _suggest_cache[cache_key] = (cat, conf)
+
+    return SuggestCategoryOut(suggested_category=cat, confidence=conf)
 
 
 def _run_ai_analysis(claim_id: int, skip_cache: bool = False, had_previous_result: bool = False):

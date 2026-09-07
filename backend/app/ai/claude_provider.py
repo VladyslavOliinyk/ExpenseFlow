@@ -3,8 +3,8 @@ import re
 
 import anthropic
 
-from app.ai.base import AIProvider, ClaimAnalysisResult
-from app.ai.prompts import build_claude_messages
+from app.ai.base import AIProvider, CategorySuggestion, ClaimAnalysisResult
+from app.ai.prompts import build_category_suggestion_prompt, build_claude_messages
 from app.config import settings
 
 
@@ -48,3 +48,18 @@ class ClaudeProvider(AIProvider):
             mismatch_reason=data.get("mismatch_reason"),
             provider_used="claude",
         )
+
+    def suggest_category(self, description: str, categories: list[str]) -> CategorySuggestion:
+        prompt = build_category_suggestion_prompt(description, categories)
+        message = self._client.messages.create(
+            model=settings.anthropic_model,
+            max_tokens=100,
+            system="You categorize expense descriptions. Respond only with valid JSON.",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = _extract_json(message.content[0].text)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Claude returned non-JSON: {raw[:200]}") from exc
+        return CategorySuggestion(**data)

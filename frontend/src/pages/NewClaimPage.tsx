@@ -1,14 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Sparkles, Loader2 } from 'lucide-react'
 import { fetchCategories } from '@/api/categories'
-import { createClaim } from '@/api/claims'
+import { createClaim, suggestCategory } from '@/api/claims'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { Category } from '@/types'
+
+interface Suggestion {
+  category: string | null
+  confidence: string | null
+  loading: boolean
+}
 
 export function NewClaimPage() {
   const navigate = useNavigate()
@@ -20,11 +28,49 @@ export function NewClaimPage() {
     expense_date: '',
     payment_details: '',
   })
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
   })
+
+  // Debounced category suggestion — fires 800ms after the user stops typing
+  useEffect(() => {
+    if (form.description.trim().length < 10) {
+      setSuggestion(null)
+      return
+    }
+
+    let cancelled = false
+
+    const timer = setTimeout(() => {
+      setSuggestion({ category: null, confidence: null, loading: true })
+      suggestCategory(form.description)
+        .then((result) => {
+          if (!cancelled) {
+            setSuggestion({
+              category: result.suggested_category,
+              confidence: result.confidence,
+              loading: false,
+            })
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setSuggestion(null)
+        })
+    }, 800)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [form.description])
+
+  function applySuggestion(categoryName: string) {
+    const match = categories.find((c: Category) => c.name === categoryName)
+    if (match) setForm((f) => ({ ...f, category_id: String(match.id) }))
+  }
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -69,13 +115,35 @@ export function NewClaimPage() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((c) => (
+                    {categories.map((c: Category) => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+
+                {/* AI category suggestion */}
+                {suggestion?.loading && (
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Suggesting…
+                  </div>
+                )}
+                {!suggestion?.loading && suggestion?.category && (
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <Sparkles className="h-3 w-3 text-blue-400 shrink-0" />
+                    <span className="text-xs text-gray-500">AI suggests:</span>
+                    <button
+                      type="button"
+                      onClick={() => applySuggestion(suggestion.category!)}
+                      className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors"
+                    >
+                      {suggestion.category}
+                      {suggestion.confidence === 'high' && ' ✓'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

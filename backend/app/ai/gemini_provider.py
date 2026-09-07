@@ -4,8 +4,8 @@ import re
 from google import genai
 from google.genai import types
 
-from app.ai.base import AIProvider, ClaimAnalysisResult
-from app.ai.prompts import build_gemini_prompt
+from app.ai.base import AIProvider, CategorySuggestion, ClaimAnalysisResult
+from app.ai.prompts import build_category_suggestion_prompt, build_gemini_prompt
 from app.config import settings
 
 
@@ -71,3 +71,17 @@ class GeminiProvider(AIProvider):
             mismatch_reason=data.get("mismatch_reason"),
             provider_used="gemini",
         )
+
+    def suggest_category(self, description: str, categories: list[str]) -> CategorySuggestion:
+        prompt = build_category_suggestion_prompt(description, categories)
+        response = self._client.models.generate_content(
+            model=settings.google_ai_model,
+            contents=prompt,
+            config=self._config,
+        )
+        raw = _extract_json(response.text)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Gemini returned non-JSON: {raw[:200]}") from exc
+        return CategorySuggestion(**data)

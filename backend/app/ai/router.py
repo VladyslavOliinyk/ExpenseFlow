@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 
 from sqlalchemy.orm import Session
 
-from app.ai.base import AIProvider, ClaimAnalysisResult
+from app.ai.base import AIProvider, CategorySuggestion, ClaimAnalysisResult
 from app.config import settings
 from app.models import AiCallLog
 
@@ -108,5 +108,28 @@ def analyze_claim_with_fallback(
 
         if success and result:
             return result
+
+    return None
+
+
+def suggest_category_with_fallback(
+    description: str,
+    categories: list[str],
+) -> CategorySuggestion | None:
+    """Try each provider for a category suggestion. No logging/DB. Returns None on total failure."""
+    providers = _get_providers()
+    timeout = settings.ai_timeout_seconds
+
+    for provider in providers:
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(provider.suggest_category, description, categories)
+        try:
+            return future.result(timeout=timeout)
+        except FuturesTimeoutError:
+            logger.warning("Provider %s timed out on suggest_category", provider.__class__.__name__)
+        except Exception as e:
+            logger.warning("Provider %s failed on suggest_category: %s", provider.__class__.__name__, e)
+        finally:
+            executor.shutdown(wait=False)
 
     return None

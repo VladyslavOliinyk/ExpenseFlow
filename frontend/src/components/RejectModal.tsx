@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -15,10 +15,16 @@ interface Props {
   onClose: () => void
   onConfirm: (comment: string) => void
   isLoading?: boolean
+  initialComment?: string
 }
 
-export function RejectModal({ open, onClose, onConfirm, isLoading }: Props) {
-  const [comment, setComment] = useState('')
+export function RejectModal({ open, onClose, onConfirm, isLoading, initialComment }: Props) {
+  const [comment, setComment] = useState(initialComment ?? '')
+
+  // Refresh pre-filled comment each time the modal opens
+  useEffect(() => {
+    if (open) setComment(initialComment ?? '')
+  }, [open])
 
   function handleConfirm() {
     if (!comment.trim()) return

@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Claim, ClaimCreate, AiMetrics } from '@/types'
+import type { Claim, ClaimCreate, AiMetrics, CategorySuggestion } from '@/types'
 
 export async function createClaim(body: ClaimCreate): Promise<Claim> {
   const { data } = await apiClient.post('/claims', body)
@@ -43,5 +43,10 @@ export async function reanalyzeClaim(id: number): Promise<Claim> {
 
 export async function fetchAiMetrics(): Promise<AiMetrics> {
   const { data } = await apiClient.get('/admin/ai-metrics')
+  return data
+}
+
+export async function suggestCategory(description: string): Promise<CategorySuggestion> {
+  const { data } = await apiClient.post('/claims/suggest-category', { description })
   return data
 }

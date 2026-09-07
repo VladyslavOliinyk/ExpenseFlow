@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useClaimDetail, useReanalyzeClaim } from '@/hooks/useClaimDetail'
 import { useApproveClaim, useRejectClaim } from '@/hooks/useQueue'
 import { useWithdrawClaim } from '@/hooks/useMyClaims'
@@ -130,6 +130,24 @@ export function ClaimDetailPage() {
             </div>
           )}
 
+          {claim.is_potential_duplicate && claim.duplicate_of_claim_id && (
+            <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">Possible duplicate</p>
+                <p className="text-xs text-yellow-700 mt-0.5">
+                  This claim may be a duplicate of{' '}
+                  <Link
+                    to={`/claims/${claim.duplicate_of_claim_id}`}
+                    className="underline hover:text-yellow-900"
+                  >
+                    claim #{claim.duplicate_of_claim_id}
+                  </Link>
+                </p>
+              </div>
+            </div>
+          )}
+
           <Separator />
 
           <AiInsightBlock claim={claim} reanalyzeFailedNote={reanalyzeFailedNote} />
@@ -197,6 +215,7 @@ export function ClaimDetailPage() {
         onClose={() => setRejectOpen(false)}
         onConfirm={handleReject}
         isLoading={reject.isPending}
+        initialComment={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
       />
     </div>
   )

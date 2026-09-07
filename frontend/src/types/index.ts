@@ -30,6 +30,8 @@ export interface Claim {
   ai_mismatch_flag: boolean | null
   ai_mismatch_reason: string | null
   ai_provider_used: string | null
+  is_potential_duplicate: boolean
+  duplicate_of_claim_id: number | null
   created_at: string
   updated_at: string
   resolved_at: string | null
@@ -43,6 +45,11 @@ export interface ClaimCreate {
   description: string
   expense_date: string
   payment_details: string
+}
+
+export interface CategorySuggestion {
+  suggested_category: string | null
+  confidence: string | null
 }
 
 export interface AiMetrics {

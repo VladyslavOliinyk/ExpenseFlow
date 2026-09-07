@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Inbox } from 'lucide-react'
+import { Inbox, AlertTriangle } from 'lucide-react'
 import { useQueue, useApproveClaim, useRejectClaim } from '@/hooks/useQueue'
 import { ClaimStatusBadge } from '@/components/ClaimStatusBadge'
 import { RejectModal } from '@/components/RejectModal'
@@ -25,6 +25,12 @@ function QueueRow({ claim }: { claim: Claim }) {
             <span className="text-gray-400 text-sm">→</span>
             <span className="text-sm text-gray-600">{claim.category?.name}</span>
             <ClaimStatusBadge status={claim.status} />
+            {claim.is_potential_duplicate && (
+              <span title="Possible duplicate" className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Duplicate?
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{claim.description}</p>
           <p className="text-xs text-gray-400 mt-1">
@@ -58,6 +64,7 @@ function QueueRow({ claim }: { claim: Claim }) {
         onClose={() => setRejectOpen(false)}
         onConfirm={(comment) => reject.mutate({ id: claim.id, comment })}
         isLoading={reject.isPending}
+        initialComment={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
       />
     </>
   )

@@ -47,6 +47,8 @@ class ClaimOut(BaseModel):
     ai_mismatch_flag: bool | None
     ai_mismatch_reason: str | None
     ai_provider_used: str | None
+    is_potential_duplicate: bool
+    duplicate_of_claim_id: int | None
     created_at: datetime
     updated_at: datetime
     resolved_at: datetime | None

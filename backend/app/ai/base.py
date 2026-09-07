@@ -11,6 +11,11 @@ class ClaimAnalysisResult(BaseModel):
     provider_used: Literal["claude", "gemini", "mock"]
 
 
+class CategorySuggestion(BaseModel):
+    suggested_category: Literal["Office", "Travel", "Client Entertainment", "Software/Subscriptions", "Other"]
+    confidence: Literal["high", "medium", "low"]
+
+
 class AIProvider(ABC):
     @abstractmethod
     def analyze_claim(
@@ -21,3 +26,11 @@ class AIProvider(ABC):
     ) -> ClaimAnalysisResult:
         """Analyze a claim and return structured result. Raises on failure."""
         ...
+
+    def suggest_category(
+        self,
+        description: str,
+        categories: list[str],
+    ) -> CategorySuggestion:
+        """Suggest the most appropriate category for a description. Raises on failure."""
+        raise NotImplementedError
