@@ -36,7 +36,7 @@ export function Layout({ children }: Props) {
                     to={to}
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                      location.pathname === to || location.pathname.startsWith(to + '/')
+                      location.pathname === to
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     )}

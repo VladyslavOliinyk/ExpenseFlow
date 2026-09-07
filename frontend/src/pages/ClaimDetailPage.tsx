@@ -155,6 +155,11 @@ export function ClaimDetailPage() {
           {/* Actions */}
           {claim.status === 'pending' && (
             <div className="flex gap-2 justify-end">
+              {isManager && isOwnClaim && (
+                <p className="text-xs text-gray-400 self-center">
+                  You submitted this claim — you cannot approve or reject your own submission.
+                </p>
+              )}
               {isRequester && !isManager && (
                 <Button
                   variant="outline"
