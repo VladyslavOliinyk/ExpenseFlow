@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/store/authStore'
+import { getApiError } from '@/api/client'
 
 export function ClaimDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -216,6 +217,7 @@ export function ClaimDetailPage() {
         onConfirm={handleReject}
         isLoading={reject.isPending}
         aiReason={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
+        error={reject.isError ? getApiError(reject.error) : undefined}
       />
     </div>
   )

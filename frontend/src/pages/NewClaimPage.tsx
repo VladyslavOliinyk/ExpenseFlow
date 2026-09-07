@@ -18,16 +18,41 @@ interface Suggestion {
   loading: boolean
 }
 
+type FormFields = 'category_id' | 'amount' | 'description' | 'expense_date' | 'payment_details'
+type Errors = Partial<Record<FormFields, string>>
+
+const TODAY = new Date().toISOString().split('T')[0]
+
+function validate(form: Record<FormFields, string>): Errors {
+  const errs: Errors = {}
+  if (!form.category_id) errs.category_id = 'Required'
+  if (!form.amount || Number(form.amount) <= 0) errs.amount = 'Amount must be greater than 0'
+  if (!form.description.trim()) errs.description = 'Required'
+  if (!form.expense_date) {
+    errs.expense_date = 'Required'
+  } else if (form.expense_date > TODAY) {
+    errs.expense_date = 'Expense date cannot be in the future'
+  }
+  if (!form.payment_details.trim()) {
+    errs.payment_details = 'Required'
+  } else if (form.payment_details.length > 200) {
+    errs.payment_details = 'Maximum 200 characters'
+  }
+  return errs
+}
+
 export function NewClaimPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Record<FormFields, string>>({
     category_id: '',
     amount: '',
     description: '',
     expense_date: '',
     payment_details: '',
   })
+  const [errors, setErrors] = useState<Errors>({})
+  const [shaking, setShaking] = useState(false)
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
 
   const { data: categories = [] } = useQuery({
@@ -67,9 +92,14 @@ export function NewClaimPage() {
     }
   }, [form.description])
 
+  function setField(field: FormFields, value: string) {
+    setForm((f) => ({ ...f, [field]: value }))
+    if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }))
+  }
+
   function applySuggestion(categoryName: string) {
     const match = categories.find((c: Category) => c.name === categoryName)
-    if (match) setForm((f) => ({ ...f, category_id: String(match.id) }))
+    if (match) setField('category_id', String(match.id))
   }
 
   const mutation = useMutation({
@@ -87,14 +117,22 @@ export function NewClaimPage() {
     },
   })
 
-  const isValid =
-    form.category_id && form.amount && form.description.trim() && form.expense_date && form.payment_details.trim()
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!isValid) return
+    const errs = validate(form)
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      setShaking(true)
+      setTimeout(() => setShaking(false), 400)
+      return
+    }
+    setErrors({})
     mutation.mutate()
   }
+
+  const err = (field: FormFields) => errors[field]
+  const fieldClass = (field: FormFields) =>
+    err(field) ? 'border-red-500 focus-visible:ring-red-500' : ''
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -103,15 +141,15 @@ export function NewClaimPage() {
           <CardTitle>New expense claim</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className={`space-y-4 ${shaking ? 'animate-shake' : ''}`}>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Category *</Label>
                 <Select
                   value={form.category_id}
-                  onValueChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
+                  onValueChange={(v) => setField('category_id', v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={err('category_id') ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -122,6 +160,9 @@ export function NewClaimPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {err('category_id') && (
+                  <p className="text-xs text-red-500">{err('category_id')}</p>
+                )}
 
                 {/* AI category suggestion */}
                 {suggestion?.loading && (
@@ -155,8 +196,12 @@ export function NewClaimPage() {
                   min="0.01"
                   placeholder="0.00"
                   value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  className={fieldClass('amount')}
+                  onChange={(e) => setField('amount', e.target.value)}
                 />
+                {err('amount') && (
+                  <p className="text-xs text-red-500">{err('amount')}</p>
+                )}
               </div>
             </div>
 
@@ -165,10 +210,14 @@ export function NewClaimPage() {
               <Input
                 id="expense_date"
                 type="date"
-                max={new Date().toISOString().split('T')[0]}
+                max={TODAY}
                 value={form.expense_date}
-                onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
+                className={fieldClass('expense_date')}
+                onChange={(e) => setField('expense_date', e.target.value)}
               />
+              {err('expense_date') && (
+                <p className="text-xs text-red-500">{err('expense_date')}</p>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -178,8 +227,12 @@ export function NewClaimPage() {
                 placeholder="What was this expense for?"
                 rows={3}
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                className={fieldClass('description')}
+                onChange={(e) => setField('description', e.target.value)}
               />
+              {err('description') && (
+                <p className="text-xs text-red-500">{err('description')}</p>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -190,8 +243,12 @@ export function NewClaimPage() {
                 rows={2}
                 maxLength={200}
                 value={form.payment_details}
-                onChange={(e) => setForm((f) => ({ ...f, payment_details: e.target.value }))}
+                className={fieldClass('payment_details')}
+                onChange={(e) => setField('payment_details', e.target.value)}
               />
+              {err('payment_details') && (
+                <p className="text-xs text-red-500">{err('payment_details')}</p>
+              )}
             </div>
 
             {mutation.isError && (
@@ -204,7 +261,7 @@ export function NewClaimPage() {
               <Button type="button" variant="outline" onClick={() => navigate('/claims')}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!isValid || mutation.isPending}>
+              <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending ? 'Submitting…' : 'Submit claim'}
               </Button>
             </div>

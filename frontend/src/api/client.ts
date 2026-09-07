@@ -14,6 +14,15 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+/** Extract a human-readable message from an axios error (reads response.data.detail). */
+export function getApiError(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const detail = (error as { response?: { data?: { detail?: unknown } } }).response?.data?.detail
+    if (typeof detail === 'string') return detail
+  }
+  return fallback
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
