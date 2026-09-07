@@ -1,7 +1,8 @@
 import json
 import re
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from app.ai.base import AIProvider, ClaimAnalysisResult
 from app.ai.prompts import build_gemini_prompt
@@ -9,27 +10,41 @@ from app.config import settings
 
 
 def _extract_json(text: str) -> str:
-    """Extract JSON from text, stripping markdown fences and surrounding prose."""
+    """Extract JSON from text — handles markdown fences, reasoning preamble, and raw JSON.
+
+    Reasoning models tend to emit thinking text BEFORE the final JSON, so we
+    search from the right to find the last complete {...} block.
+    """
+    # 1. Markdown fences (```json ... ```)
     match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if match:
         return match.group(1).strip()
+    # 2. Last complete {...} block — robust against reasoning preamble
+    last_open = text.rfind('{')
+    if last_open != -1:
+        last_close = text.rfind('}')
+        if last_close > last_open:
+            return text[last_open:last_close + 1].strip()
     return text.strip()
 
 
 class GeminiProvider(AIProvider):
     def __init__(self):
-        genai.configure(api_key=settings.google_ai_api_key)
-        self._model = genai.GenerativeModel(
-            model_name=settings.google_ai_model,
-            generation_config=genai.GenerationConfig(
-                temperature=0,
-                max_output_tokens=300,
-            ),
+        self._client = genai.Client(api_key=settings.google_ai_api_key)
+        self._config = types.GenerateContentConfig(
+            temperature=0,
+            max_output_tokens=500,
+            response_mime_type="application/json",
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
 
     def analyze_claim(self, amount: float, category: str, description: str) -> ClaimAnalysisResult:
         prompt = build_gemini_prompt(category, amount, description)
-        response = self._model.generate_content(prompt)
+        response = self._client.models.generate_content(
+            model=settings.google_ai_model,
+            contents=prompt,
+            config=self._config,
+        )
         raw = _extract_json(response.text)
         try:
             data = json.loads(raw)

@@ -24,7 +24,7 @@ class ClaudeProvider(AIProvider):
         system_prompt, user_message = build_claude_messages(category, amount, description)
         message = self._client.messages.create(
             model=settings.anthropic_model,
-            max_tokens=300,
+            max_tokens=500,
             system=system_prompt,
             messages=[
                 {
