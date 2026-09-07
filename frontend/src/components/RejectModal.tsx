@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -15,15 +16,15 @@ interface Props {
   onClose: () => void
   onConfirm: (comment: string) => void
   isLoading?: boolean
-  initialComment?: string
+  aiReason?: string
 }
 
-export function RejectModal({ open, onClose, onConfirm, isLoading, initialComment }: Props) {
-  const [comment, setComment] = useState(initialComment ?? '')
+export function RejectModal({ open, onClose, onConfirm, isLoading, aiReason }: Props) {
+  const [comment, setComment] = useState('')
 
-  // Refresh pre-filled comment each time the modal opens
+  // Always start with an empty textarea when the modal opens
   useEffect(() => {
-    if (open) setComment(initialComment ?? '')
+    if (open) setComment('')
   }, [open])
 
   function handleConfirm() {
@@ -36,6 +37,10 @@ export function RejectModal({ open, onClose, onConfirm, isLoading, initialCommen
     onClose()
   }
 
+  function applyAiReason() {
+    if (aiReason) setComment(aiReason)
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent>
@@ -44,16 +49,27 @@ export function RejectModal({ open, onClose, onConfirm, isLoading, initialCommen
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label htmlFor="reject-comment">
-              Reason for rejection <span className="text-red-500">*</span>
-            </Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label htmlFor="reject-comment">
+                Reason for rejection <span className="text-red-500">*</span>
+              </Label>
+              {aiReason && (
+                <button
+                  type="button"
+                  onClick={applyAiReason}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Use AI's reason
+                </button>
+              )}
+            </div>
             <Textarea
               id="reject-comment"
               placeholder="Explain why this claim is being rejected…"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
-              className="mt-1"
             />
           </div>
           <div className="flex justify-end gap-2">

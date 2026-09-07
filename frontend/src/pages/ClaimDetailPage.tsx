@@ -215,7 +215,7 @@ export function ClaimDetailPage() {
         onClose={() => setRejectOpen(false)}
         onConfirm={handleReject}
         isLoading={reject.isPending}
-        initialComment={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
+        aiReason={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
       />
     </div>
   )

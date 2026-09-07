@@ -64,7 +64,7 @@ function QueueRow({ claim }: { claim: Claim }) {
         onClose={() => setRejectOpen(false)}
         onConfirm={(comment) => reject.mutate({ id: claim.id, comment })}
         isLoading={reject.isPending}
-        initialComment={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
+        aiReason={claim.ai_mismatch_flag ? (claim.ai_mismatch_reason ?? undefined) : undefined}
       />
     </>
   )

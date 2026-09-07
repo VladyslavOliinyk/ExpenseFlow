@@ -1,8 +1,10 @@
 # Increment when CLAIM_ANALYSIS_RULES changes to invalidate cached AI results
 # for claims with identical content but stale analysis under old prompt rules.
-PROMPT_VERSION = "2"
+PROMPT_VERSION = "3"
 
 CLAIM_ANALYSIS_RULES = """You are reviewing employee expense claims for internal consistency, not for policy compliance.
+
+The description may be written in any language. Evaluate its content and meaning regardless of language — translate it mentally if needed, but NEVER mention the language itself in your summary or mismatch_reason, and never treat a non-English description as inherently suspicious or as a reason for flagging. Only the substance of what is described matters, not the language it's written in.
 
 Your only job: check whether the category, amount, and description of a claim are logically consistent with each other. You do not know the company's expense policy or spending limits — do not flag anything as a policy violation.
 
