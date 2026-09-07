@@ -1,82 +1,42 @@
 [
   {
-    "amount": 245.50,
-    "category": "Travel",
-    "description": "Flight to NYC for client meeting Q3",
-    "response": {
-      "summary": "Standard business travel expense for a client meeting flight to New York City. Amount is reasonable for a domestic flight.",
-      "mismatch_flag": false,
-      "mismatch_reason": null
-    }
-  },
-  {
-    "amount": 320.00,
-    "category": "Client Entertainment",
-    "description": "Team dinner with Acme Corp executives after partnership signing",
-    "response": {
-      "summary": "Business entertainment expense for a client dinner following a partnership agreement. Amount falls within typical per-person range for executive dining.",
-      "mismatch_flag": false,
-      "mismatch_reason": null
-    }
-  },
-  {
-    "amount": 49.99,
-    "category": "Software/Subscriptions",
-    "description": "Notion Pro annual subscription for project management",
-    "response": {
-      "summary": "Software subscription for a project management tool. Notion Pro is a legitimate business productivity tool commonly used by teams.",
-      "mismatch_flag": false,
-      "mismatch_reason": null
-    }
-  },
-  {
-    "amount": 89.00,
+    "amount": 1100.00,
     "category": "Office",
-    "description": "Ergonomic mouse and keyboard for home office",
+    "description": "Round-trip flight ticket to Berlin for annual company retreat",
     "response": {
-      "summary": "Office equipment purchase for a home office setup. While ergonomic peripherals are valid work expenses, home office equipment may require separate approval.",
+      "summary": "Round-trip flight ticket to Berlin for the annual company retreat at $1100.",
       "mismatch_flag": true,
-      "mismatch_reason": "Home office equipment purchases may fall outside standard Office category policy which typically covers in-office supplies. Verify company home-office reimbursement policy."
+      "mismatch_reason": "Description describes travel (flight ticket), not office supplies or workplace equipment."
     }
   },
   {
-    "amount": 1200.00,
-    "category": "Travel",
-    "description": "Hotel accommodation for conference",
-    "response": {
-      "summary": "Hotel accommodation expense for a conference. The amount is on the higher end for hotel stays but can be reasonable depending on the city and conference duration.",
-      "mismatch_flag": true,
-      "mismatch_reason": "Amount of $1,200 for hotel accommodation is above typical per-night budgets. Please verify the number of nights and confirm this aligns with the company travel policy."
-    }
-  },
-  {
-    "amount": 15.50,
+    "amount": 120.00,
     "category": "Office",
-    "description": "Coffee and snacks for team standup meeting",
+    "description": "New ergonomic keyboard and mouse for home office setup",
     "response": {
-      "summary": "Minor office refreshment expense for a team meeting. Small amount well within typical meeting refreshment budgets.",
+      "summary": "Purchase of an ergonomic keyboard and mouse for home office setup at $120.00.",
       "mismatch_flag": false,
       "mismatch_reason": null
     }
   },
   {
-    "amount": 500.00,
-    "category": "Client Entertainment",
-    "description": "Golf round with potential investor",
+    "amount": 35.00,
+    "category": "Other",
+    "description": "Team lunch during a working session",
     "response": {
-      "summary": "Business entertainment expense for a golf outing with a potential investor. While golf is a recognized business entertainment activity, the amount should be verified against company entertainment policy.",
-      "mismatch_flag": true,
-      "mismatch_reason": "Golf entertainment with investors may require pre-approval under the Client Entertainment policy. Verify that this activity was pre-authorized."
+      "summary": "A $35.00 team lunch expense during a working session.",
+      "mismatch_flag": false,
+      "mismatch_reason": null
     }
   },
   {
-    "amount": 299.00,
+    "amount": 300.00,
     "category": "Software/Subscriptions",
-    "description": "Adobe Creative Cloud annual subscription",
+    "description": "Team dinner at a restaurant to celebrate product launch",
     "response": {
-      "summary": "Annual subscription to Adobe Creative Cloud, a comprehensive design software suite. Cost is standard for annual individual license.",
-      "mismatch_flag": false,
-      "mismatch_reason": null
+      "summary": "A $300 team dinner at a restaurant to celebrate a product launch.",
+      "mismatch_flag": true,
+      "mismatch_reason": "Description describes a meal/event, which belongs in Client Entertainment or Other, not Software/Subscriptions."
     }
   }
 ]
