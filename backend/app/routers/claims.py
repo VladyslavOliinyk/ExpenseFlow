@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
+from app.ai.prompts import PROMPT_VERSION
 from app.dependencies import get_current_user, get_db
 from app.models import Category, Claim, User
 from app.models.claim import ClaimStatus
@@ -13,7 +14,7 @@ router = APIRouter()
 
 
 def _compute_hash(amount, category_id: int, description: str) -> str:
-    raw = f"{amount}:{category_id}:{description.strip().lower()}"
+    raw = f"{amount}:{category_id}:{description.strip().lower()}|v{PROMPT_VERSION}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
@@ -203,7 +204,7 @@ def manager_queue(
             Claim.category_id.in_(managed_ids),
             Claim.status == ClaimStatus.pending,
         )
-        .order_by(Claim.created_at.asc())
+        .order_by(Claim.created_at.desc())
         .all()
     )
     return [_claim_to_out(c) for c in claims]
