@@ -72,7 +72,7 @@ export function AiInsightBlock({ claim, reanalyzeFailedNote }: Props) {
         ) : (
           <div className="flex items-center gap-1 text-green-600 text-xs font-medium">
             <CheckCircle className="h-3.5 w-3.5" />
-            Looks good
+            No mismatch detected
           </div>
         )}
       </div>
