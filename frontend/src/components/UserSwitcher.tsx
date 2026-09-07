@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Users } from 'lucide-react'
+import { ChevronDown, Users, LogOut } from 'lucide-react'
 import { fetchAllUsers, loginAs, fetchMe } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
 
 export function UserSwitcher() {
   const [open, setOpen] = useState(false)
-  const { setAuth, user: currentUser } = useAuthStore()
+  const { setAuth, clearAuth, user: currentUser } = useAuthStore()
+
+  function handleSignOut() {
+    clearAuth()
+    window.location.href = '/login'
+  }
 
   const { data: users = [] } = useQuery({
     queryKey: ['all-users'],
@@ -69,6 +74,14 @@ export function UserSwitcher() {
                 </span>
               </button>
             ))}
+            <div className="border-t my-1" />
+            <button
+              onClick={handleSignOut}
+              className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-600"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
           </div>
         </>
       )}
