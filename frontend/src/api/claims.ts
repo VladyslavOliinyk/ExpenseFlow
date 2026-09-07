@@ -36,6 +36,11 @@ export async function rejectClaim(id: number, comment: string): Promise<Claim> {
   return data
 }
 
+export async function reanalyzeClaim(id: number): Promise<Claim> {
+  const { data } = await apiClient.post(`/claims/${id}/reanalyze`)
+  return data
+}
+
 export async function fetchAiMetrics(): Promise<AiMetrics> {
   const { data } = await apiClient.get('/admin/ai-metrics')
   return data

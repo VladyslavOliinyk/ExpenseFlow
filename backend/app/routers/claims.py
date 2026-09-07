@@ -1,4 +1,5 @@
 import hashlib
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -11,6 +12,10 @@ from app.models.claim import ClaimStatus
 from app.schemas import ClaimCreate, ClaimOut, RejectBody
 
 router = APIRouter()
+
+# Simple in-memory rate limit: one real AI call per claim per N seconds.
+_reanalyze_last_call: dict[int, float] = {}
+_REANALYZE_COOLDOWN_S = 10
 
 
 def _compute_hash(amount, category_id: int, description: str) -> str:
@@ -100,7 +105,7 @@ def create_claim(
     return _claim_to_out(claim)
 
 
-def _run_ai_analysis(claim_id: int):
+def _run_ai_analysis(claim_id: int, skip_cache: bool = False):
     """Background task: run AI analysis and save results to the claim."""
     import logging
     from app.ai.router import analyze_claim_with_fallback
@@ -117,8 +122,9 @@ def _run_ai_analysis(claim_id: int):
         if not claim:
             return
 
-        # Check dedup: same content_hash with AI results already
-        if claim.content_hash:
+        # Check dedup: same content_hash with AI results already.
+        # Skipped on manual reanalyze to always get a fresh result.
+        if not skip_cache and claim.content_hash:
             existing = (
                 db.query(Claim)
                 .filter(
@@ -164,6 +170,46 @@ def _run_ai_analysis(claim_id: int):
 def SessionLocal_bg():
     from app.database import SessionLocal
     return SessionLocal()
+
+
+@router.post("/claims/{claim_id}/reanalyze")
+def reanalyze_claim(
+    claim_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ClaimOut:
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    managed_ids = [c.id for c in current_user.managed_categories]
+    if claim.requester_id != current_user.id and claim.category_id not in managed_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    last_call = _reanalyze_last_call.get(claim_id, 0)
+    if time.time() - last_call < _REANALYZE_COOLDOWN_S:
+        raise HTTPException(status_code=429, detail="Please wait before re-running analysis")
+    _reanalyze_last_call[claim_id] = time.time()
+
+    claim.ai_summary = None
+    claim.ai_mismatch_flag = None
+    claim.ai_mismatch_reason = None
+    claim.ai_provider_used = None
+    db.commit()
+
+    background_tasks.add_task(_run_ai_analysis, claim.id, True)
+
+    claim = (
+        db.query(Claim)
+        .options(
+            joinedload(Claim.requester).joinedload(User.managed_categories),
+            joinedload(Claim.category),
+        )
+        .filter(Claim.id == claim_id)
+        .first()
+    )
+    return _claim_to_out(claim)
 
 
 @router.get("/claims/mine")

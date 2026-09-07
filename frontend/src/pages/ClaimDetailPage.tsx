@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { useClaimDetail } from '@/hooks/useClaimDetail'
+import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { useClaimDetail, useReanalyzeClaim } from '@/hooks/useClaimDetail'
 import { useApproveClaim, useRejectClaim } from '@/hooks/useQueue'
 import { useWithdrawClaim } from '@/hooks/useMyClaims'
 import { AiInsightBlock } from '@/components/AiInsightBlock'
@@ -19,8 +19,10 @@ export function ClaimDetailPage() {
   const claimId = Number(id)
   const user = useAuthStore((s) => s.user)
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [reanalyzedAt, setReanalyzedAt] = useState<number | undefined>(undefined)
 
-  const { data: claim, isLoading } = useClaimDetail(claimId)
+  const { data: claim, isLoading } = useClaimDetail(claimId, reanalyzedAt)
+  const reanalyze = useReanalyzeClaim(claimId)
   const approve = useApproveClaim()
   const reject = useRejectClaim()
   const withdraw = useWithdrawClaim()
@@ -50,16 +52,12 @@ export function ClaimDetailPage() {
   const createdAtMs = new Date(
     claim.created_at.endsWith('Z') ? claim.created_at : `${claim.created_at}Z`
   ).getTime()
-  const ageMs = Date.now() - createdAtMs
-  const ageSeconds = ageMs / 1000
-  // Debug: remove once timezone fix is confirmed in production
-  console.debug('[AI timing] elapsed ms:', ageMs, '| threshold ms:', 30_000)
-  // AI is still computing if summary is null and less than 30s have passed since creation.
-  // 30s accounts for the full fallback cycle: ai_timeout_seconds (5s) for the primary
-  // provider + secondary provider response time + network overhead.
+  // After a manual reanalyze, measure age from the reanalyze timestamp so that
+  // the skeleton shows correctly even for claims created long ago.
   // TODO(variant-B): replace time-based heuristic with explicit ai_status field on Claim
   // ("pending" | "processing" | "completed" | "failed") set by the BackgroundTask.
-  const aiLoading = claim.ai_summary === null && ageSeconds < 30
+  const referenceMs = reanalyzedAt ?? createdAtMs
+  const aiLoading = claim.ai_summary === null && Date.now() - referenceMs < 30_000
 
   function handleApprove() {
     approve.mutate(claimId, { onSuccess: () => navigate('/queue') })
@@ -135,6 +133,24 @@ export function ClaimDetailPage() {
           <Separator />
 
           <AiInsightBlock claim={claim} isLoading={aiLoading} />
+
+          {claim.status === 'pending' && (
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  reanalyze.mutate(undefined, {
+                    onSuccess: () => setReanalyzedAt(Date.now()),
+                  })
+                }
+                disabled={reanalyze.isPending}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${reanalyze.isPending ? 'animate-spin' : ''}`} />
+                {reanalyze.isPending ? 'Requesting…' : 'Re-run AI analysis'}
+              </Button>
+            </div>
+          )}
 
           {/* Actions */}
           {claim.status === 'pending' && (
