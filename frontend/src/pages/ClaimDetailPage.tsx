@@ -43,8 +43,9 @@ export function ClaimDetailPage() {
   const isManager = user?.managed_category_ids.includes(claim.category_id) ?? false
   const isOwnClaim = isRequester
 
-  // AI is still loading if status is pending and no summary yet
-  const aiLoading = claim.status === 'pending' && claim.ai_summary === null
+  // AI is still computing if summary is null and less than 15s have passed since creation
+  const ageSeconds = (Date.now() - new Date(claim.created_at).getTime()) / 1000
+  const aiLoading = claim.ai_summary === null && ageSeconds < 15
 
   function handleApprove() {
     approve.mutate(claimId, { onSuccess: () => navigate('/queue') })

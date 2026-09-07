@@ -25,7 +25,6 @@ class ClaudeProvider(AIProvider):
         message = self._client.messages.create(
             model=settings.anthropic_model,
             max_tokens=300,
-            temperature=0,
             system=system_prompt,
             messages=[
                 {

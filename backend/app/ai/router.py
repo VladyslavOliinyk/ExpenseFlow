@@ -2,6 +2,7 @@
 AI router with fallback chain: Claude → Gemini → (None if all fail).
 Each provider gets AI_TIMEOUT_SECONDS. Logs every attempt to AiCallLog.
 """
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
@@ -11,6 +12,8 @@ from app.ai.base import AIProvider, ClaimAnalysisResult
 from app.config import settings
 from app.models import AiCallLog
 
+logger = logging.getLogger(__name__)
+
 
 def _get_providers() -> list[AIProvider]:
     """Return providers based on AI_MODE setting."""
@@ -19,6 +22,7 @@ def _get_providers() -> list[AIProvider]:
     from app.ai.gemini_provider import GeminiProvider
 
     if settings.ai_mode == "mock":
+        logger.info("Building AI providers: mode=mock → [MockProvider]")
         return [MockProvider()]
 
     providers: list[AIProvider] = []
@@ -27,11 +31,12 @@ def _get_providers() -> list[AIProvider]:
     if settings.google_ai_api_key:
         providers.append(GeminiProvider())
 
-    # Always have mock as final fallback so we never return nothing in dev
-    if settings.environment == "development":
-        providers.append(MockProvider())
-
-    return providers or [MockProvider()]
+    logger.info(
+        "Building AI providers: mode=%s → %s",
+        settings.ai_mode,
+        [p.__class__.__name__ for p in providers],
+    )
+    return providers
 
 
 def _call_with_timeout(
@@ -72,8 +77,10 @@ def analyze_claim_with_fallback(
             success = True
         except FuturesTimeoutError:
             error_msg = f"Timeout after {timeout}s"
+            logger.warning("Provider %s timed out after %ss", provider_name, timeout)
         except Exception as e:
             error_msg = str(e)[:500]
+            logger.warning("Provider %s failed: %s", provider_name, error_msg)
 
         latency_ms = int((time.monotonic() - start) * 1000)
 
