@@ -4,19 +4,8 @@ import re
 import google.generativeai as genai
 
 from app.ai.base import AIProvider, ClaimAnalysisResult
+from app.ai.prompts import build_gemini_prompt
 from app.config import settings
-
-_PROMPT_TEMPLATE = """You are a financial compliance assistant reviewing employee expense claims.
-Analyze this claim and respond ONLY with valid JSON (no markdown, no explanation):
-{{
-  "summary": "1-2 sentence plain-English summary",
-  "mismatch_flag": true or false,
-  "mismatch_reason": "explanation if mismatch_flag is true, null otherwise"
-}}
-
-Category: {category}
-Amount: ${amount:.2f}
-Description: {description}"""
 
 
 def _extract_json(text: str) -> str:
@@ -39,9 +28,7 @@ class GeminiProvider(AIProvider):
         )
 
     def analyze_claim(self, amount: float, category: str, description: str) -> ClaimAnalysisResult:
-        prompt = _PROMPT_TEMPLATE.format(
-            category=category, amount=amount, description=description
-        )
+        prompt = build_gemini_prompt(category, amount, description)
         response = self._model.generate_content(prompt)
         raw = _extract_json(response.text)
         try:

@@ -4,19 +4,8 @@ import re
 import anthropic
 
 from app.ai.base import AIProvider, ClaimAnalysisResult
+from app.ai.prompts import build_claude_messages
 from app.config import settings
-
-_SYSTEM_PROMPT = """You are a financial compliance assistant reviewing employee expense claims.
-Analyze the claim and return a JSON object with exactly these fields:
-- summary: 1-2 sentence plain-English summary of the expense
-- mismatch_flag: true if the expense seems suspicious, unusual for the category, or policy-violating; false otherwise
-- mismatch_reason: short explanation if mismatch_flag is true, null otherwise
-
-Respond ONLY with valid JSON. No markdown, no explanation outside JSON."""
-
-_USER_TEMPLATE = """Category: {category}
-Amount: ${amount:.2f}
-Description: {description}"""
 
 
 def _extract_json(text: str) -> str:
@@ -32,17 +21,16 @@ class ClaudeProvider(AIProvider):
         self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     def analyze_claim(self, amount: float, category: str, description: str) -> ClaimAnalysisResult:
+        system_prompt, user_message = build_claude_messages(category, amount, description)
         message = self._client.messages.create(
             model=settings.anthropic_model,
             max_tokens=300,
             temperature=0,
-            system=_SYSTEM_PROMPT,
+            system=system_prompt,
             messages=[
                 {
                     "role": "user",
-                    "content": _USER_TEMPLATE.format(
-                        category=category, amount=amount, description=description
-                    ),
+                    "content": user_message,
                 }
             ],
         )
