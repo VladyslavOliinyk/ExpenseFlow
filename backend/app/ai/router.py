@@ -46,9 +46,21 @@ def _call_with_timeout(
     description: str,
     timeout: int,
 ) -> ClaimAnalysisResult:
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(provider.analyze_claim, amount, category, description)
+    # Do NOT use the context-manager form of ThreadPoolExecutor here.
+    # `with executor:` calls shutdown(wait=True) on exit, which blocks until the
+    # underlying thread finishes — even after future.result() raises TimeoutError.
+    # That caused observed latency of ~24s for a 5s timeout (the thread ran to
+    # completion before the caller could log and move on to the next provider).
+    # shutdown(wait=False) lets the thread finish in the background; we simply
+    # discard its result. Note: the HTTP request to the provider is already in
+    # flight and cannot be cancelled mid-stream — this is a known limitation of
+    # synchronous HTTP clients in threads.
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(provider.analyze_claim, amount, category, description)
+    try:
         return future.result(timeout=timeout)
+    finally:
+        executor.shutdown(wait=False)
 
 
 def analyze_claim_with_fallback(

@@ -14,14 +14,17 @@ def ai_metrics(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> AiMetrics:
-    total = db.query(AiCallLog).filter(AiCallLog.success == True).count()  # noqa: E712
+    # analyzed_count = claims with a completed AI result (the canonical denominator).
+    # Previously total_analyzed was AiCallLog success count, which differs from
+    # analyzed_count when retries/fallbacks occur (multiple log rows per claim),
+    # causing mismatch_rate to divide by a different number than what the UI showed.
+    analyzed_count = db.query(Claim).filter(Claim.ai_summary.isnot(None)).count()
 
     mismatch_count = (
         db.query(Claim)
         .filter(Claim.ai_mismatch_flag == True)  # noqa: E712
         .count()
     )
-    analyzed_count = db.query(Claim).filter(Claim.ai_summary.isnot(None)).count()
     mismatch_rate = (mismatch_count / analyzed_count) if analyzed_count > 0 else 0.0
 
     avg_latency = db.query(func.avg(AiCallLog.latency_ms)).scalar()
@@ -35,7 +38,7 @@ def ai_metrics(
     provider_breakdown = {row[0]: row[1] for row in provider_rows}
 
     return AiMetrics(
-        total_analyzed=total,
+        total_analyzed=analyzed_count,
         mismatch_count=mismatch_count,
         mismatch_rate=round(mismatch_rate, 3),
         avg_latency_ms=round(float(avg_latency), 1) if avg_latency else None,

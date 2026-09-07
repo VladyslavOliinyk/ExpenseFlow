@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-haiku-4-5-20251001"
     google_ai_api_key: str = ""
     google_ai_model: str = "gemini-2.0-flash"
-    ai_timeout_seconds: int = 5
+    ai_timeout_seconds: int = 10
 
     environment: str = "development"
     cors_origins: str = "http://localhost:5173"
