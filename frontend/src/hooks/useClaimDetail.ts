@@ -28,6 +28,11 @@ export function useReanalyzeClaim(claimId: number) {
   return useMutation({
     mutationFn: () => reanalyzeClaim(claimId),
     onSuccess: (updatedClaim) => {
+      // Write null-AI-fields claim into cache immediately so the UI shows skeleton
+      // without waiting for the next poll. The caller's onSuccess sets reanalyzedAt,
+      // which triggers a useEffect refetch to restart the polling interval — see
+      // ClaimDetailPage. We do NOT call invalidateQueries here because reanalyzedAt
+      // hasn't propagated yet at this point (React state update is async).
       qc.setQueryData(['claims', claimId], updatedClaim)
     },
   })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { useClaimDetail, useReanalyzeClaim } from '@/hooks/useClaimDetail'
@@ -21,8 +21,16 @@ export function ClaimDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [reanalyzedAt, setReanalyzedAt] = useState<number | undefined>(undefined)
 
-  const { data: claim, isLoading } = useClaimDetail(claimId, reanalyzedAt)
+  const { data: claim, isLoading, refetch } = useClaimDetail(claimId, reanalyzedAt)
   const reanalyze = useReanalyzeClaim(claimId)
+
+  // After reanalyze, setQueryData puts null-AI claim in cache but refetchInterval
+  // is already stopped (was false for old claims). We need a refetch to happen
+  // AFTER reanalyzedAt has propagated into useClaimDetail's closure, so the interval
+  // callback uses the new reference time and restarts polling.
+  useEffect(() => {
+    if (reanalyzedAt) refetch()
+  }, [reanalyzedAt])
   const approve = useApproveClaim()
   const reject = useRejectClaim()
   const withdraw = useWithdrawClaim()

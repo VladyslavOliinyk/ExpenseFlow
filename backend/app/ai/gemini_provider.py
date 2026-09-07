@@ -30,7 +30,18 @@ def _extract_json(text: str) -> str:
 
 class GeminiProvider(AIProvider):
     def __init__(self):
-        self._client = genai.Client(api_key=settings.google_ai_api_key)
+        # Disable the SDK's built-in retry (attempts=1 = no retry after failure).
+        # We handle retries at a higher level via the provider fallback chain in router.py.
+        # Without this, a 503 from Gemini triggers an internal backoff retry that can
+        # push total response time well beyond our ai_timeout_seconds budget, causing
+        # the ThreadPoolExecutor timeout to fire mid-retry and silently discard a
+        # successful late response.
+        self._client = genai.Client(
+            api_key=settings.google_ai_api_key,
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(attempts=1),
+            ),
+        )
         self._config = types.GenerateContentConfig(
             temperature=0,
             max_output_tokens=500,
