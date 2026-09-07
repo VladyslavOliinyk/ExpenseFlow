@@ -43,9 +43,23 @@ export function ClaimDetailPage() {
   const isManager = user?.managed_category_ids.includes(claim.category_id) ?? false
   const isOwnClaim = isRequester
 
-  // AI is still computing if summary is null and less than 15s have passed since creation
-  const ageSeconds = (Date.now() - new Date(claim.created_at).getTime()) / 1000
-  const aiLoading = claim.ai_summary === null && ageSeconds < 15
+  // Backend returns naive datetimes without 'Z' suffix — append it so the browser
+  // always treats created_at as UTC. Without this, browsers in non-UTC timezones
+  // parse the string as local time, inflating ageMs by the UTC offset and making
+  // "unavailable" fire instantly.
+  const createdAtMs = new Date(
+    claim.created_at.endsWith('Z') ? claim.created_at : `${claim.created_at}Z`
+  ).getTime()
+  const ageMs = Date.now() - createdAtMs
+  const ageSeconds = ageMs / 1000
+  // Debug: remove once timezone fix is confirmed in production
+  console.debug('[AI timing] elapsed ms:', ageMs, '| threshold ms:', 30_000)
+  // AI is still computing if summary is null and less than 30s have passed since creation.
+  // 30s accounts for the full fallback cycle: ai_timeout_seconds (5s) for the primary
+  // provider + secondary provider response time + network overhead.
+  // TODO(variant-B): replace time-based heuristic with explicit ai_status field on Claim
+  // ("pending" | "processing" | "completed" | "failed") set by the BackgroundTask.
+  const aiLoading = claim.ai_summary === null && ageSeconds < 30
 
   function handleApprove() {
     approve.mutate(claimId, { onSuccess: () => navigate('/queue') })

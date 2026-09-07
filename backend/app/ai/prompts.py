@@ -11,10 +11,14 @@ Valid categories and typical expenses:
 
 Set mismatch_flag=true ONLY when the description clearly describes something that does not belong to the stated category (e.g. category "Office" but description mentions a flight ticket). Do NOT flag borderline or ambiguous cases — when in doubt, set mismatch_flag=false. An unusually large or small amount alone is not sufficient grounds to flag, unless combined with a description that doesn't fit the category at all.
 
+Additionally, set mismatch_flag=true if the description is too vague, uninformative, or evasive to determine what the expense actually was — even if it does not explicitly contradict the category. A description must give enough detail for a reviewer to verify the expense makes sense. Do NOT flag short-but-clear descriptions (e.g. "Taxi to airport" is fine — short but unambiguous). DO flag descriptions that refuse to state a purpose, are placeholder-like, or provide no verifiable content (e.g. "won't say what for", "misc", "stuff", "N/A", "-"). When flagging for vagueness, set mismatch_reason to explain that the description lacks sufficient detail to verify the expense, not that it belongs to the wrong category.
+
 Examples:
 - category="Office", description="Flight ticket to London for client visit" → mismatch_flag=true, mismatch_reason="Description describes travel, not office supplies"
 - category="Travel", description="Hotel stay for conference" → mismatch_flag=false, mismatch_reason=null
 - category="Software/Subscriptions", description="Annual Figma license renewal" → mismatch_flag=false, mismatch_reason=null
+- category="Office", description="won't say what for" → mismatch_flag=true, mismatch_reason="Description provides no verifiable information about what was purchased"
+- category="Travel", description="Taxi to airport" → mismatch_flag=false, mismatch_reason=null
 
 Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 {{
