@@ -4,6 +4,7 @@ Run: python -m app.seed
 """
 from app.database import SessionLocal
 from app.models import User, Category, Claim, ClaimStatus
+from app.models.claim import AiStatus
 from datetime import date
 
 
@@ -116,6 +117,7 @@ def seed():
                 payment_details=sc["payment_details"],
                 status=sc["status"],
                 reject_comment=sc.get("reject_comment"),
+                ai_status=AiStatus.failed,
             )
             db.add(claim)
 

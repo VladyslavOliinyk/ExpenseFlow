@@ -153,7 +153,7 @@ export function ClaimDetailPage() {
 
           <AiInsightBlock claim={claim} reanalyzeFailedNote={reanalyzeFailedNote} />
 
-          {claim.status === 'pending' && (
+          {claim.ai_status !== 'processing' && (
             <div className="flex justify-end">
               <Button
                 variant="outline"
