@@ -1,4 +1,5 @@
 export type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn'
+export type AiStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export interface User {
   id: number
@@ -24,6 +25,7 @@ export interface Claim {
   payment_details: string
   status: ClaimStatus
   reject_comment: string | null
+  ai_status: AiStatus
   ai_summary: string | null
   ai_mismatch_flag: boolean | null
   ai_mismatch_reason: string | null

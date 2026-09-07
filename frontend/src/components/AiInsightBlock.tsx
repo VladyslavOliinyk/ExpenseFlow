@@ -5,13 +5,12 @@ import type { Claim } from '@/types'
 
 interface Props {
   claim: Claim
-  isLoading?: boolean
 }
 
-export function AiInsightBlock({ claim, isLoading }: Props) {
+export function AiInsightBlock({ claim }: Props) {
   const [expanded, setExpanded] = useState(false)
 
-  if (isLoading) {
+  if (claim.ai_status === 'pending' || claim.ai_status === 'processing') {
     return (
       <div className="rounded-lg border border-gray-200 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -24,8 +23,7 @@ export function AiInsightBlock({ claim, isLoading }: Props) {
     )
   }
 
-  // AI ran but no results yet (background task still running)
-  if (claim.ai_summary === null) {
+  if (claim.ai_status === 'failed') {
     return (
       <div className="rounded-lg border border-dashed border-gray-200 p-4">
         <div className="flex items-center gap-2 text-sm text-gray-400">

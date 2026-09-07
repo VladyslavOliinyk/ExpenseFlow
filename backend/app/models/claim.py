@@ -25,6 +25,13 @@ class ClaimStatus(str, enum.Enum):
     withdrawn = "withdrawn"
 
 
+class AiStatus(str, enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
 class Claim(Base):
     __tablename__ = "claims"
 
@@ -44,6 +51,9 @@ class Claim(Base):
 
     # AI fields
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    ai_status: Mapped[AiStatus] = mapped_column(
+        Enum(AiStatus, name="aistatus"), default=AiStatus.pending
+    )
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_mismatch_flag: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     ai_mismatch_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.ai.prompts import PROMPT_VERSION
 from app.dependencies import get_current_user, get_db
 from app.models import Category, Claim, User
-from app.models.claim import ClaimStatus
+from app.models.claim import AiStatus, ClaimStatus
 from app.schemas import ClaimCreate, ClaimOut, RejectBody
 
 router = APIRouter()
@@ -51,6 +51,7 @@ def _claim_to_out(claim: Claim) -> ClaimOut:
         payment_details=claim.payment_details,
         status=claim.status,
         reject_comment=claim.reject_comment,
+        ai_status=claim.ai_status,
         ai_summary=claim.ai_summary,
         ai_mismatch_flag=claim.ai_mismatch_flag,
         ai_mismatch_reason=claim.ai_mismatch_reason,
@@ -122,6 +123,10 @@ def _run_ai_analysis(claim_id: int, skip_cache: bool = False):
         if not claim:
             return
 
+        # Signal "in progress" immediately so the first poll already sees it.
+        claim.ai_status = AiStatus.processing
+        db.commit()
+
         # Check dedup: same content_hash with AI results already.
         # Skipped on manual reanalyze to always get a fresh result.
         if not skip_cache and claim.content_hash:
@@ -139,6 +144,7 @@ def _run_ai_analysis(claim_id: int, skip_cache: bool = False):
                 claim.ai_mismatch_flag = existing.ai_mismatch_flag
                 claim.ai_mismatch_reason = existing.ai_mismatch_reason
                 claim.ai_provider_used = f"cached:{existing.ai_provider_used}"
+                claim.ai_status = AiStatus.completed
                 db.commit()
                 return
 
@@ -154,12 +160,16 @@ def _run_ai_analysis(claim_id: int, skip_cache: bool = False):
             claim.ai_mismatch_flag = result.mismatch_flag
             claim.ai_mismatch_reason = result.mismatch_reason
             claim.ai_provider_used = result.provider_used
-            db.commit()
+            claim.ai_status = AiStatus.completed
+        else:
+            claim.ai_status = AiStatus.failed
+        db.commit()
     except Exception:
         logger.exception("AI background analysis failed for claim_id=%s", claim_id)
-        # ai_summary stays None — frontend shows "AI insight unavailable"
         try:
             db.rollback()
+            claim.ai_status = AiStatus.failed
+            db.commit()
         except Exception:
             pass
     finally:
@@ -196,6 +206,7 @@ def reanalyze_claim(
     claim.ai_mismatch_flag = None
     claim.ai_mismatch_reason = None
     claim.ai_provider_used = None
+    claim.ai_status = AiStatus.processing
     db.commit()
 
     background_tasks.add_task(_run_ai_analysis, claim.id, True)

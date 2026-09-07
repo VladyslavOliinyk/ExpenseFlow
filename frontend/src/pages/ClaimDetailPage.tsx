@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { useClaimDetail, useReanalyzeClaim } from '@/hooks/useClaimDetail'
@@ -19,18 +19,9 @@ export function ClaimDetailPage() {
   const claimId = Number(id)
   const user = useAuthStore((s) => s.user)
   const [rejectOpen, setRejectOpen] = useState(false)
-  const [reanalyzedAt, setReanalyzedAt] = useState<number | undefined>(undefined)
 
-  const { data: claim, isLoading, refetch } = useClaimDetail(claimId, reanalyzedAt)
+  const { data: claim, isLoading } = useClaimDetail(claimId)
   const reanalyze = useReanalyzeClaim(claimId)
-
-  // After reanalyze, setQueryData puts null-AI claim in cache but refetchInterval
-  // is already stopped (was false for old claims). We need a refetch to happen
-  // AFTER reanalyzedAt has propagated into useClaimDetail's closure, so the interval
-  // callback uses the new reference time and restarts polling.
-  useEffect(() => {
-    if (reanalyzedAt) refetch()
-  }, [reanalyzedAt])
   const approve = useApproveClaim()
   const reject = useRejectClaim()
   const withdraw = useWithdrawClaim()
@@ -52,20 +43,6 @@ export function ClaimDetailPage() {
   const isRequester = user?.id === claim.requester_id
   const isManager = user?.managed_category_ids.includes(claim.category_id) ?? false
   const isOwnClaim = isRequester
-
-  // Backend returns naive datetimes without 'Z' suffix — append it so the browser
-  // always treats created_at as UTC. Without this, browsers in non-UTC timezones
-  // parse the string as local time, inflating ageMs by the UTC offset and making
-  // "unavailable" fire instantly.
-  const createdAtMs = new Date(
-    claim.created_at.endsWith('Z') ? claim.created_at : `${claim.created_at}Z`
-  ).getTime()
-  // After a manual reanalyze, measure age from the reanalyze timestamp so that
-  // the skeleton shows correctly even for claims created long ago.
-  // TODO(variant-B): replace time-based heuristic with explicit ai_status field on Claim
-  // ("pending" | "processing" | "completed" | "failed") set by the BackgroundTask.
-  const referenceMs = reanalyzedAt ?? createdAtMs
-  const aiLoading = claim.ai_summary === null && Date.now() - referenceMs < 30_000
 
   function handleApprove() {
     approve.mutate(claimId, { onSuccess: () => navigate('/queue') })
@@ -140,18 +117,14 @@ export function ClaimDetailPage() {
 
           <Separator />
 
-          <AiInsightBlock claim={claim} isLoading={aiLoading} />
+          <AiInsightBlock claim={claim} />
 
           {claim.status === 'pending' && (
             <div className="flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  reanalyze.mutate(undefined, {
-                    onSuccess: () => setReanalyzedAt(Date.now()),
-                  })
-                }
+                onClick={() => reanalyze.mutate(undefined)}
                 disabled={reanalyze.isPending}
               >
                 <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${reanalyze.isPending ? 'animate-spin' : ''}`} />
